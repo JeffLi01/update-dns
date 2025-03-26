@@ -7,6 +7,7 @@ edition = "2024"
 base64 = "0.22.1"
 clap = { version = "4.5.9", default-features = false, features = ["derive", "help", "std"] }
 dns-update = "0.1.2"
+env_logger = { version = "0.11.7", default-features = false }
 hostname = "0.4.0"
 log = "0.4.27"
 tokio = { version = "1.44.1", features = ["macros"] }

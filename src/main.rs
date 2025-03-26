@@ -2,7 +2,7 @@ use std::io;
 use std::net::{IpAddr, SocketAddr, TcpStream};
 
 use base64::{Engine, prelude::BASE64_STANDARD};
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use dns_update::{DnsRecord, DnsUpdater, TsigAlgorithm};
 use log::debug;
 
@@ -19,6 +19,8 @@ pub struct Args {
     pub name: Option<String>,
     #[arg(short, long)]
     pub ip: Option<String>,
+    #[arg(short, long, action = ArgAction::Count)]
+    verbose: u8,
 }
 
 fn get_local_ip_for_remote_ip(remote_addr: &str) -> io::Result<IpAddr> {
@@ -31,6 +33,8 @@ fn get_local_ip_for_remote_ip(remote_addr: &str) -> io::Result<IpAddr> {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+    init_logger(args.verbose);
+
     let hostname = args
         .name
         .unwrap_or_else(|| hostname::get().unwrap().to_string_lossy().to_string());
@@ -43,9 +47,9 @@ async fn main() {
                 Ok(ip) => ip,
                 Err(err) => {
                     panic!("failed to get IP: {err}");
-                },
+                }
             }
-        },
+        }
     };
     debug!("ip: {:?}", ip);
     // Create a new RFC2136 client
@@ -64,12 +68,17 @@ async fn main() {
         IpAddr::V6(ipv6_addr) => DnsRecord::AAAA { content: ipv6_addr },
     };
     client
-        .update(
-            &hostname,
-            record,
-            300,
-            args.origin,
-        )
+        .update(&hostname, record, 300, args.origin)
         .await
         .unwrap();
+}
+
+fn init_logger(level: u8) {
+    let filter_level = match level {
+        0 => log::LevelFilter::Info,
+        1 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
+    };
+
+    env_logger::builder().filter_level(filter_level).init();
 }
