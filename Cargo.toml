@@ -8,4 +8,5 @@ base64 = "0.22.1"
 clap = { version = "4.5.9", default-features = false, features = ["derive", "help", "std"] }
 dns-update = "0.1.2"
 hostname = "0.4.0"
+log = "0.4.27"
 tokio = { version = "1.44.1", features = ["macros"] }
