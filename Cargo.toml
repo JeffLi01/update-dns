@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 base64 = "0.22.1"
-clap = { version = "4.5.9", default-features = false, features = ["derive", "help", "std"] }
+clap = { version = "4.5.9", features = ["derive"] }
 dns-update = "0.1.2"
 env_logger = { version = "0.11.7", default-features = false }
 hostname = "0.4.0"
