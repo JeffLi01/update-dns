@@ -1,4 +1,3 @@
-use std::io;
 use std::net::{IpAddr, SocketAddr, TcpStream};
 
 use base64::{Engine, prelude::BASE64_STANDARD};
@@ -23,9 +22,10 @@ pub struct Args {
     verbose: u8,
 }
 
-fn get_local_ip_for_remote_ip(remote_addr: &str) -> io::Result<IpAddr> {
-    let remote: SocketAddr = remote_addr.parse().unwrap();
-    let stream = TcpStream::connect(&remote)?;
+fn get_local_ip_for_dns(server: &str) -> anyhow::Result<IpAddr> {
+    let remote = format!("{}:{}", server, 53);
+    let socket: SocketAddr = remote.parse()?;
+    let stream = TcpStream::connect(&socket)?;
     let local_addr = stream.local_addr()?;
     Ok(local_addr.ip())
 }
@@ -36,16 +36,17 @@ async fn main() {
     init_logger(args.verbose);
 
     let names = if args.names.is_empty() {
-        let name = hostname::get().unwrap().to_string_lossy().to_string();
-        &vec![name]
+        let Ok(name) = hostname::get() else {
+            panic!("failed to get hostname");
+        };
+        &vec![name.to_string_lossy().to_string()]
     } else {
         &args.names
     };
     let ip = match &args.ip {
         Some(ip) => ip.parse().expect("IP should be parsed succeffully"),
         None => {
-            let remote = format!("{}:{}", &args.server, 53);
-            match get_local_ip_for_remote_ip(&remote) {
+            match get_local_ip_for_dns(&args.server) {
                 Ok(ip) => ip,
                 Err(err) => {
                     panic!("failed to get IP: {err}");
@@ -56,11 +57,13 @@ async fn main() {
     debug!("local ip: {:?}", ip);
     let tsig =
         std::env::var("DNS_TSIG_KEY").expect("env variable `DNS_TSIG_KEY` should be set");
-    let sig = BASE64_STANDARD.decode(tsig).unwrap();
+    let Ok(sig) = BASE64_STANDARD.decode(tsig) else {
+        panic!("failed to decode DNS_TSIG_KEY");
+    };
     // Create a new RFC2136 client
-    let client =
-        DnsUpdater::new_rfc2136_tsig(&args.server, &args.key, sig, TsigAlgorithm::HmacSha256)
-            .unwrap();
+    let Ok(client) = DnsUpdater::new_rfc2136_tsig(&args.server, &args.key, sig, TsigAlgorithm::HmacSha256) else {
+        panic!("failed to create DNS updater");
+    };
 
     for name in names {
         let fqdn = format!("{}.{}", name, &args.origin);
