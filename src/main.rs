@@ -38,7 +38,8 @@ async fn main() {
     let hostname = args
         .name
         .unwrap_or_else(|| hostname::get().unwrap().to_string_lossy().to_string());
-    debug!("hostname: {:?}", hostname);
+    let fqdn = format!("{}.{}", hostname, args.origin);
+    debug!("fqdn: {:?}", fqdn);
     let ip = match args.ip {
         Some(ip) => ip.parse().expect("IP should be parsed succeffully"),
         None => {
@@ -60,7 +61,7 @@ async fn main() {
             .unwrap();
 
     // Delete the record
-    client.delete(&hostname, &args.origin).await.unwrap();
+    client.delete(&fqdn, &args.origin).await.unwrap();
 
     // Create a new A record
     let record = match ip {
@@ -68,7 +69,7 @@ async fn main() {
         IpAddr::V6(ipv6_addr) => DnsRecord::AAAA { content: ipv6_addr },
     };
     client
-        .update(&hostname, record, 300, args.origin)
+        .update(&fqdn, record, 300, args.origin)
         .await
         .unwrap();
 }
